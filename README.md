@@ -79,6 +79,11 @@ ado-axi doctor
 }
 ```
 
+- `org` — the Azure DevOps organization name, i.e. the `acme` in `https://dev.azure.com/acme`.
+  It must match exactly; a wrong name is rejected as "not authorized", just like a bad credential.
+- `project` — the default project inside that organization. Most resources (repos, pull requests,
+  pipelines, work items) belong to a project, so this saves you from passing `--project` on every
+  command. It is optional, but commands that work on project resources then need `--project`.
 - `auth: "az"` — uses the Azure CLI (`az account get-access-token`). Add `"tenant": "<id>"`
   when the organization lives in another Entra tenant.
 - `auth: "pat"` — reads a personal access token from the env var named in `patEnv`.
