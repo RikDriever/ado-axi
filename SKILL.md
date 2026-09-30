@@ -143,7 +143,8 @@ Example:
 MSYS_NO_PATHCONV=1 ado-axi pr comment 812 --file '/src/Project/File.cs' --line 10 --body '...'
 ```
 
-The CLI rejects Windows paths before creating a thread.
+Without the prefix, the CLI restores paths converted by Git for Windows. It rejects other Windows
+paths, and paths under `/bin` or `/usr/bin`, before creating a thread.
 
 ## Pipelines
 

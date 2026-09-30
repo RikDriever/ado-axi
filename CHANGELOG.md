@@ -5,6 +5,12 @@ All notable changes to ado-axi are documented here. This project follows
 
 ## [Unreleased]
 
+### Changed
+
+- `pr comment --file` and `repo file` restore repository paths that Git for Windows converted to
+  Windows paths; ambiguous `/bin` or `/usr/bin` paths and other Windows paths are still rejected
+  with a `MSYS_NO_PATHCONV=1` hint
+
 ### Documentation & Infrastructure
 
 - Add a reproducible benchmark harness: `pnpm run bench:capture` records and scrubs Azure DevOps
