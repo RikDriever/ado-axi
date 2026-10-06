@@ -5,6 +5,8 @@ All notable changes to ado-axi are documented here. This project follows
 
 ## [Unreleased]
 
+## [0.4.5] - 2026-10-06
+
 ### Changed
 
 - Normalize organization-root URLs in `--org`, environment variables, profiles, and `config init`;
