@@ -144,7 +144,7 @@ cat payload.bin | ado-axi api POST _apis/wit/attachments --query 'fileName=paylo
   `vsrm.dev.azure.com`, `vssps.dev.azure.com`, and `almsearch.dev.azure.com`. Full URLs supply
   org/project/host/query, select matching profile authentication, and do not inherit default project
   context. Conflicting flags or profiles from another org fail locally; credentials, custom ports,
-  fragments, dot segments, and duplicate query keys in URLs are rejected. Quote URLs containing query parameters.
+  fragments, dot segments, and duplicate query keys in URLs are rejected.
 - **Piped input.** `api` sends piped stdin as the raw request body when `--body` is omitted;
   work-item and PR descriptions plus every comment command read stdin when their content flag is omitted.
   For Markdown or multiline comments, use a quoted heredoc — never `--body "..."` with backticks,
