@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, resolve as resolvePath } from "node:path";
 import { AxiError } from "axi-sdk-js";
+import { normalizeOrg } from "./adoUrl.js";
 
 export type AuthMode = "az" | "pat";
 
@@ -52,6 +53,14 @@ export function loadConfig(explicit?: string): { path: string; config?: ConfigFi
       "Run `ado-axi config init --org <org> --project <project>` to rewrite it",
     ]);
   }
+  for (const [name, profile] of Object.entries(parsed.profiles)) {
+    if (!profile || typeof profile.org !== "string") {
+      throw new AxiError(`profile '${name}' is missing an organization name`, "VALIDATION_ERROR", [
+        "Set 'org' to an organization name or organization-root URL",
+      ]);
+    }
+    profile.org = normalizeOrg(profile.org);
+  }
   return { path, config: parsed };
 }
 
@@ -74,6 +83,7 @@ export interface ProfileFlags {
  * config defaultProfile > the only profile in the config.
  */
 export function resolveProfile(flags: ProfileFlags = {}): ResolvedProfile {
+  flags = { ...flags, org: flags.org === undefined ? undefined : normalizeOrg(flags.org) };
   const { path, config } = loadConfig(flags.config);
 
   if (flags.profile) {
@@ -106,7 +116,7 @@ export function resolveProfile(flags: ProfileFlags = {}): ResolvedProfile {
     };
   }
 
-  const envOrg = process.env.ADO_AXI_ORG;
+  const envOrg = process.env.ADO_AXI_ORG ? normalizeOrg(process.env.ADO_AXI_ORG) : undefined;
   if (envOrg) {
     const matched = matchProfileByOrg(config, envOrg);
     if (matched) {

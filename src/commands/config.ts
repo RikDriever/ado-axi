@@ -9,6 +9,7 @@ import {
   type Profile,
 } from "../lib/config.js";
 import { collapseHomeDirectory } from "../lib/paths.js";
+import { normalizeOrg } from "../lib/adoUrl.js";
 
 const INIT_FLAGS = ["name", "auth", "pat-env", "tenant", "default", "config"];
 const LIST_FLAGS = ["config"];
@@ -71,12 +72,13 @@ function listProfiles(args: ReturnType<typeof parseArgs>): Record<string, unknow
 
 function initProfile(args: ReturnType<typeof parseArgs>): Record<string, unknown> {
   assertKnownFlags(args, INIT_FLAGS, "config init");
-  const org = flagString(args, "org");
-  if (!org) {
+  const rawOrg = flagString(args, "org");
+  if (!rawOrg) {
     throw new AxiError("--org is required", "VALIDATION_ERROR", [
       "Usage: ado-axi config init --org <org> [--project <project>] [--name <profile>] [--auth az|pat] [--pat-env <VAR>]",
     ]);
   }
+  const org = normalizeOrg(rawOrg);
   const auth = (flagString(args, "auth") ?? (envPatVarFor(org) ? "pat" : "az")) as Profile["auth"];
   if (auth !== "az" && auth !== "pat") {
     throw new AxiError(`unknown --auth '${auth}'`, "VALIDATION_ERROR", ["Valid values: az | pat"]);

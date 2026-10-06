@@ -5,6 +5,15 @@ All notable changes to ado-axi are documented here. This project follows
 
 ## [Unreleased]
 
+### Changed
+
+- Normalize organization-root URLs in `--org`, environment variables, profiles, and `config init`;
+  reject project/API paths in organization values with actionable local errors
+- `api` accepts full HTTPS Azure DevOps REST URLs on the four supported hosts, preserving URL
+  context and query parameters instead of inheriting default project context; conflicting flags,
+  mismatched profiles, unsafe URLs, and path traversal fail before authentication
+- Clarify session org/project selection in the agent skill without automatically choosing a project
+
 ## [0.4.4] - 2026-09-30
 
 ### Changed
