@@ -1,8 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { resolveProfile } from "../src/lib/config.js";
+import { requireProject, resolveProfile } from "../src/lib/config.js";
+import { configCommand } from "../src/commands/config.js";
 
 const ORIGINAL = { ...process.env };
 let dir: string;
@@ -23,6 +24,7 @@ beforeEach(() => {
 
 afterEach(() => {
   process.env = { ...ORIGINAL };
+  rmSync(dir, { recursive: true, force: true });
 });
 
 describe("resolveProfile", () => {
@@ -82,6 +84,51 @@ describe("resolveProfile", () => {
     const profile = resolveProfile({ org: "adhoc", project: "P", config: file });
     expect(profile.org).toBe("adhoc");
     expect(profile.source).toBe("flags");
+  });
+
+  it.each(["https://dev.azure.com/alpha-org/", "https://alpha-org.visualstudio.com/"])(
+    "normalizes --org %s before matching profile authentication",
+    (org) => {
+      writeConfig({ profiles: { alpha: { org: "alpha-org", auth: "pat", patEnv: "ALPHA_PAT" } } });
+      expect(resolveProfile({ org, config: file })).toMatchObject({
+        org: "alpha-org", name: "alpha", auth: "pat", patEnv: "ALPHA_PAT",
+      });
+    },
+  );
+
+  it("normalizes organization URLs from environment and config", () => {
+    writeConfig({ profiles: { alpha: { org: "https://dev.azure.com/alpha-org", auth: "pat" } } });
+    expect(resolveProfile({ config: file }).org).toBe("alpha-org");
+    process.env.ADO_AXI_ORG = "https://alpha-org.visualstudio.com";
+    expect(resolveProfile({ config: file })).toMatchObject({ org: "alpha-org", source: "env", auth: "pat" });
+  });
+
+  it.each(["alpha-org/Project", "https://dev.azure.com/alpha-org/Project", "https://example.com/alpha-org"])(
+    "rejects ambiguous organization input %s",
+    (org) => {
+      writeConfig({ profiles: {} });
+      expect(() => resolveProfile({ org, config: file })).toThrowError(/organization-root URL/);
+      process.env.ADO_AXI_ORG = org;
+      expect(() => resolveProfile({ config: file })).toThrowError(/organization-root URL/);
+      delete process.env.ADO_AXI_ORG;
+      writeConfig({ profiles: { invalid: { org, auth: "az" } } });
+      expect(() => resolveProfile({ config: file })).toThrowError(/organization-root URL/);
+    },
+  );
+
+  it("persists a normalized org and refuses invalid config init input without writing", async () => {
+    await expect(configCommand(["init", "--org", "alpha-org/Project", "--config", file])).rejects.toMatchObject({
+      code: "VALIDATION_ERROR",
+    });
+    expect(existsSync(file)).toBe(false);
+    await configCommand(["init", "--org", "https://dev.azure.com/alpha-org", "--config", file]);
+    expect(JSON.parse(readFileSync(file, "utf8")).profiles["alpha-org"].org).toBe("alpha-org");
+  });
+
+  it("does not guess a project when an organization URL lacks one", () => {
+    writeConfig({ profiles: {} });
+    const profile = resolveProfile({ org: "https://dev.azure.com/alpha-org", config: file });
+    expect(() => requireProject(profile, "pr list")).toThrowError(/no project configured/);
   });
 
   it("reads $ADO_AXI_ORG when no flag is given", () => {

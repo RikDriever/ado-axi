@@ -31,12 +31,14 @@ Every command accepts these, and they never count as unknown flags:
 - `--profile <name>` — a configured profile (`ado-axi config list`); may also be written
   *before* the command (`ado-axi --profile acme pr list`), including on the bare dashboard
 - `--org <org>` / `--project <project>` — one-off overrides; an `--org` that matches a
-  configured profile inherits that profile's authentication
+  configured profile inherits that profile's authentication. Organization-root URLs
+  (`https://dev.azure.com/<org>` or `https://<org>.visualstudio.com`) also work; no project/API path
 - `$ADO_AXI_ORG` / `$ADO_AXI_PROJECT` — environment overrides
 
-When the user pastes a `https://dev.azure.com/<org>/<project>/_git/<repo>/pullrequest/<id>` URL, read the
-org, project, and repo out of it and pass them explicitly — the default profile is probably a
-different org. A `TF200016: project does not exist` error almost always means a missing `--org`.
+For pasted PR web URLs, extract org, project, repo, and id and pass them explicitly.
+Establish org/project from the task or a project-specific profile and reuse them for the session.
+If project context is missing, use `ado-axi project list --org <org>`; ask the user if the intended
+project remains unclear. Never select a project arbitrarily, especially for mutations.
 
 ## Work items
 
@@ -143,7 +145,8 @@ Example:
 MSYS_NO_PATHCONV=1 ado-axi pr comment 812 --file '/src/Project/File.cs' --line 10 --body '...'
 ```
 
-The CLI rejects Windows paths before creating a thread.
+Without the prefix, the CLI restores paths converted by Git for Windows. It rejects other Windows
+paths, and paths under `/bin` or `/usr/bin`, before creating a thread.
 
 ## Pipelines
 
@@ -206,12 +209,16 @@ ado-axi api _apis/testplan/plans --query 'filterActivePlans=true'
 ado-axi api POST _apis/search/codesearchresults --host almsearch --body '{"searchText":"TODO"}'
 cat payload.bin | ado-axi api POST _apis/wit/attachments --query 'fileName=payload.bin' --content-type application/octet-stream
 ado-axi api _apis/projects --no-project           # organization-level path
+ado-axi api 'https://vsrm.dev.azure.com/acme/Platform/_apis/release/releases?api-version=7.1'
 ado-axi api PATCH _apis/wit/workitems/4211 --content-type json-patch \
   --body '[{"op":"test","path":"/rev","value":7},{"op":"add","path":"/fields/System.State","value":"Active"}]'
 ```
 
-Paths are relative to `https://dev.azure.com/<org>/<project>/`. `--host` selects
-`dev` (default), `vsrm`, `vssps`, or `almsearch`. When `--body` is omitted and stdin is piped,
+Relative paths use `https://dev.azure.com/<org>/<project>/`; `--host` selects
+`dev` (default), `vsrm`, `vssps`, or `almsearch`. Full HTTPS REST URLs on those four hosts also
+work: URL org/project/host/query replace default context and use matching profile authentication.
+Conflicting flags or a `--profile` from another org are rejected; do not override URL context.
+Quote URLs with query parameters. When `--body` is omitted and stdin is piped,
 stdin is sent unchanged as the request body. `--content-type` accepts the shorthands
 `json` (default), `json-patch`, `merge-patch`, `text`, or any media type — work item writes
 require `json-patch`.

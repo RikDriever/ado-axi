@@ -47,6 +47,15 @@ describe("buildUrl", () => {
     expect(url).not.toContain("branchName");
   });
 
+  it("rejects absolute URLs and path traversal before credentials or network access", async () => {
+    const fetch = vi.fn();
+    vi.stubGlobal("fetch", fetch);
+    for (const path of ["https://dev.azure.com/other-org/_apis/projects", "../other-org/_apis/projects"]) {
+      await expect(request(profile, { path })).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+    }
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
   it("translates HTTP 409 into a structured conflict", async () => {
     process.env.EXAMPLE_PAT = "secret";
     vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ message: "Ref changed" }), {

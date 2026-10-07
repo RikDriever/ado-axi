@@ -79,11 +79,18 @@ ado-axi doctor
 }
 ```
 
-- `org` — the Azure DevOps organization name, i.e. the `acme` in `https://dev.azure.com/acme`. It must match exactly; a wrong name is rejected as "not authorized", just like a bad credential.
-- `project` — the default project inside that organization. Most resources (repos, pull requests, pipelines, work items) belong to a project, so this saves you from passing `--project` on every command. It is optional, but commands that work on project resources then need `--project`.
-- `auth: "az"` — uses the Azure CLI (`az account get-access-token`). Add `"tenant": "<id>"` when the organization lives in another Entra tenant.
+- `org` — the Azure DevOps organization name or organization-root URL (`acme` or `https://dev.azure.com/acme`).
+- `project` — the default project inside that organization. Saves passing `--project` on commands requiring project context.
+- `auth: "az"` — uses the Azure CLI (`az account get-access-token`). Add `"tenant": "<id>"`
+  when the organization lives in another Entra tenant.
 - `auth: "pat"` — reads a personal access token from the env var named in `patEnv`.
-- Any command accepts `--profile <name>`, `--org <org>`, `--project <project>` — before or after the command — and `$ADO_AXI_ORG` / `$ADO_AXI_PROJECT` work too. An org that matches a configured profile inherits that profile's authentication.
+- Any command accepts `--profile <name>`, `--org <org>`, `--project <project>` — before or
+  after the command — and `$ADO_AXI_ORG` / `$ADO_AXI_PROJECT` work too. An org that matches a
+  configured profile inherits that profile's authentication. Organization-root URLs such as
+  `https://dev.azure.com/acme` or `https://acme.visualstudio.com` are normalized to the org name,
+  including in environment variables and profiles; project/API paths in `--org` are rejected.
+- Project context is never guessed. Pass `--project`, set `$ADO_AXI_PROJECT`, or use a
+  project-specific profile. Use `ado-axi project list --org <org>` to discover projects.
 
 ## Use
 
@@ -135,6 +142,11 @@ cat payload.bin | ado-axi api POST _apis/wit/attachments --query 'fileName=paylo
   aggregates published test runs into failing tests with their error messages.
 - **Bounded output.** Lists take `--limit`/`--fields`, detail views truncate with a `--full` escape
   hatch, and `repo file` refuses folders and binaries.
+- **ADO REST URLs.** `api` accepts relative paths or full HTTPS REST URLs on `dev.azure.com`,
+  `vsrm.dev.azure.com`, `vssps.dev.azure.com`, and `almsearch.dev.azure.com`. Full URLs supply
+  org/project/host/query, select matching profile authentication, and do not inherit default project
+  context. Conflicting flags or profiles from another org fail locally; credentials, custom ports,
+  fragments, dot segments, and duplicate query keys in URLs are rejected.
 - **Piped input.** `api` sends piped stdin as the raw request body when `--body` is omitted;
   work-item and PR descriptions plus every comment command read stdin when their content flag is omitted.
   For Markdown or multiline comments, use a quoted heredoc — never `--body "..."` with backticks,

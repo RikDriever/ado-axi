@@ -4,7 +4,7 @@ import { request } from "../lib/client.js";
 import { requireProject, type ResolvedProfile } from "../lib/config.js";
 import { profileFromArgs } from "../lib/context.js";
 import { countLine, htmlToText, personName, pickFields, shortDate, truncate } from "../lib/format.js";
-import { validateRepositoryPath } from "../lib/repositoryPath.js";
+import { normalizeRepositoryPath } from "../lib/repositoryPath.js";
 import { readStdinIfPiped } from "../lib/stdin.js";
 
 const LIST_FLAGS = ["repo", "status", "creator", "reviewer", "target", "source", "limit"];
@@ -871,8 +871,8 @@ async function commentPr(args: ReturnType<typeof parseArgs>): Promise<Record<str
     ]);
   }
 
-  const file = flagString(args, "file");
-  if (file) validateRepositoryPath(file);
+  const rawFile = flagString(args, "file");
+  const file = rawFile ? normalizeRepositoryPath(rawFile) : undefined;
 
   const pr = await fetchPr(profile, id, flagString(args, "repo"), project);
   const repoName = pr.repository?.name;

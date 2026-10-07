@@ -1,17 +1,32 @@
 import { describe, expect, it } from "vitest";
-import { validateRepositoryPath } from "../src/lib/repositoryPath.js";
+import { normalizeRepositoryPath } from "../src/lib/repositoryPath.js";
 
-describe("validateRepositoryPath", () => {
+const gitBash = { MSYSTEM: "MINGW64", EXEPATH: "C:\\Program Files\\Git\\bin" };
+
+describe("normalizeRepositoryPath", () => {
   it("accepts Azure DevOps repository paths", () => {
-    expect(() => validateRepositoryPath("/src/Project/File.cs")).not.toThrow();
+    expect(normalizeRepositoryPath("/src/Project/File.cs", "--file", "ado-axi pr comment ...", gitBash)).toBe(
+      "/src/Project/File.cs",
+    );
   });
 
   it.each([
-    "C:/Program Files/Git/src/Project/File.cs",
-    "C:\\Program Files\\Git\\src\\Project\\File.cs",
-  ])("rejects a Windows path before posting a comment", (path) => {
+    ["C:/Program Files/Git/src/Project/File.cs", gitBash],
+    ["C:\\Program Files\\Git\\src\\Project\\File.cs", gitBash],
+    ["C:/Program Files/Git/src/Project/File.cs", { MSYSTEM: "MINGW64" }],
+    ["D:/Tools/Git/src/Project/File.cs", { MSYSTEM: "MINGW64", EXEPATH: "D:\\Tools\\Git" }],
+  ])("undoes the Git Bash path conversion of %s", (path, env) => {
+    expect(normalizeRepositoryPath(path, "--file", "ado-axi pr comment ...", env)).toBe("/src/Project/File.cs");
+  });
+
+  it.each([
+    ["C:/Users/me/Project/File.cs", gitBash],
+    ["C:/Program Files/Git/usr/bin/App.cs", gitBash],
+    ["C:\\Program Files\\Git\\usr\\bin\\App.cs", gitBash],
+    ["C:/Program Files/Git/src/Project/File.cs", {}],
+  ])("rejects other Windows paths before posting a comment", (path, env) => {
     try {
-      validateRepositoryPath(path);
+      normalizeRepositoryPath(path, "--file", "ado-axi pr comment ...", env);
       throw new Error("expected validation error");
     } catch (error) {
       expect((error as { message: string }).message).toMatch(/Windows path/);

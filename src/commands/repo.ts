@@ -4,7 +4,7 @@ import { request } from "../lib/client.js";
 import { requireProject } from "../lib/config.js";
 import { profileFromArgs } from "../lib/context.js";
 import { countLine, pickFields, shortDate, truncate } from "../lib/format.js";
-import { validateRepositoryPath } from "../lib/repositoryPath.js";
+import { normalizeRepositoryPath } from "../lib/repositoryPath.js";
 
 const REPO_LIST_FLAGS = ["name", "limit"];
 const BRANCH_FLAGS = ["repo", "limit", "name"];
@@ -134,15 +134,15 @@ async function readFile(args: ReturnType<typeof parseArgs>): Promise<Record<stri
   const profile = profileFromArgs(args);
   const project = requireProject(profile, "repo file");
   const repo = flagString(args, "repo");
-  const path = args.positionals[0] ?? flagString(args, "path");
-  if (!repo || !path) {
+  const rawPath = args.positionals[0] ?? flagString(args, "path");
+  if (!repo || !rawPath) {
     throw new AxiError("--repo <name> and a file path are required", "VALIDATION_ERROR", [
       "Usage: ado-axi repo file <path> --repo <name> [--ref <branch>] [--commit <40-hex>]",
       "Example: ado-axi repo file /src/Program.cs --repo Web --ref main",
       "Run `ado-axi repo list` to see repository names",
     ]);
   }
-  validateRepositoryPath(path, "repo file", "ado-axi repo file ...");
+  const path = normalizeRepositoryPath(rawPath, "repo file", "ado-axi repo file ...");
 
   const ref = flagString(args, "ref");
   const commit = flagString(args, "commit");

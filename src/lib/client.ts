@@ -1,10 +1,11 @@
 import { AxiError } from "axi-sdk-js";
 import { resolveCredential } from "./auth.js";
 import type { ResolvedProfile } from "./config.js";
+import { ADO_HOSTS, assertRelativeApiPath, normalizeOrg, type AdoHost } from "./adoUrl.js";
 
 export const DEFAULT_API_VERSION = "7.1";
 
-export type AdoHost = "dev" | "vsrm" | "vssps" | "almsearch";
+export type { AdoHost } from "./adoUrl.js";
 
 export interface RequestOptions {
   method?: string;
@@ -22,16 +23,10 @@ export interface RequestOptions {
   raw?: boolean;
 }
 
-const HOSTS: Record<AdoHost, string> = {
-  dev: "dev.azure.com",
-  vsrm: "vsrm.dev.azure.com",
-  vssps: "vssps.dev.azure.com",
-  almsearch: "almsearch.dev.azure.com",
-};
-
 export function buildUrl(profile: ResolvedProfile, options: RequestOptions): string {
-  const host = HOSTS[options.host ?? "dev"];
-  const segments = [encodeURIComponent(profile.org)];
+  assertRelativeApiPath(options.path);
+  const host = ADO_HOSTS[options.host ?? "dev"];
+  const segments = [encodeURIComponent(normalizeOrg(profile.org))];
   const project = options.project;
   if (project) segments.push(encodeURIComponent(project));
   const path = options.path.replace(/^\/+/, "");
@@ -51,8 +46,8 @@ export async function request<T = unknown>(
   profile: ResolvedProfile,
   options: RequestOptions,
 ): Promise<T> {
-  const credential = await resolveCredential(profile);
   const url = buildUrl(profile, options);
+  const credential = await resolveCredential(profile);
   const method = (options.method ?? "GET").toUpperCase();
   const headers: Record<string, string> = {
     Authorization: credential.header,
@@ -76,7 +71,7 @@ export async function request<T = unknown>(
       `network error contacting Azure DevOps (${profile.org})`,
       "NETWORK_ERROR",
       [
-        `Check connectivity to https://${HOSTS[options.host ?? "dev"]}`,
+        `Check connectivity to https://${ADO_HOSTS[options.host ?? "dev"]}`,
         (err as Error).message,
         "Run `ado-axi doctor` to verify the profile",
       ],
